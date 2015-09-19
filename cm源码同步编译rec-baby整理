@@ -1,0 +1,212 @@
+一、源码的同步:
+
+同步之前推荐先把编译环境搭建好
+
+可以使用百度云学院的一键搭建脚本，具体就不讲了
+
+修改hosts实现翻墙
+
+sudo gedit etc/hosts
+
+1.打开你的终端输入代码：
+
+    mkdir -p ~/bin        #创建bin文件夹，用来放置repo文件。
+
+    mkdir -p ~/cm11.0     #建立源码文件夹。
+
+    curl https://dl-ssl.google.com/dl/googlesource/git-repo/repo > ~/bin/repo              
+
+    #把repo同步到bin文件夹，
+
+  如果提示curl没安装的话，安装一下即可：
+
+	sudo apt-get install curl
+  注意，翻墙才可以把repo同步下来，可以使用别人备份好的拷贝到bin目录下
+
+    chmod a+x ~/bin/repo  #给repo权限
+
+2.终端输入代码：
+
+gedit ~/.bashrc           
+
+在打开的./bashrc末尾加入下面的代码：
+
+export PATH=${PATH}:~/bin 
+
+#把bin文件夹加入到环境变量中
+
+保存关闭，然后继续在终端输入：
+
+export PATH=${PATH}:~/bin
+
+#使刚刚的环境变量生效
+
+同步源码之前还要安装一个软件git
+
+sudo apt-get install git
+
+
+好了开始同步你的源代码，
+
+
+cd ～/cm11.0           #进入cm11文件夹
+
+repo init -u git://github.com/CyanogenMod/android.git -b cm-11.0
+
+#把cm11的源码同步到cm11文件夹
+
+过一会会要求你输入你的姓名，邮箱地址，可以随便写，
+
+git config --global user.name "rombaby" 
+git config --global user.email "100493065@qq.com"
+	
+最后就是同步源码
+
+repo sync           #开始同步源码
+
+
+
+repo sync -j8  #开启八线程同步
+
+
+为防止网络出现问题导致同步源码失败，可以制作一个脚本来自动同步源码：
+新建一个文档;
+加入下面的内容
+
+#!/bin/bash
+echo "========================start repo sync==============="
+repo sync -j8
+while [ $? = 1 ]; do
+echo "==========================sync failed, re-sync again============="
+sleep 3
+repo sync -j8
+done
+
+保存命名为123.sh放到源码根目录下
+然后在源码目录下打开终端执行123.sh：
+
+sh 123.sh        #自动同步源码
+
+
+二、安卓源码备份和使用
+
+ 1.保存源码在最新，最完整状态，在源码目录下终端输入：
+
+    repo sync
+
+2.同时按键盘上的Ctrl+h键，显示隐藏文件夹【一般隐藏文件夹为在文件夹名前有个点】，找到.repo。
+
+在该目录下终端输入:
+
+    tar zcvf FileName.tar.gz .repo   【命令格式解释：FileName是生成后的文件名】
+
+3.等待数分钟后会生成我们需要的源码的.tar.gz压缩文件，保存到自己的电脑上和移动硬盘上，以方便下次使用。) 
+
+4.通过以上源码备份我们得到了大小大概为8G左右的.repo备份.tar.gz文件，我们先创建一个工作目录，并赋予权限，终端输入：
+
+    mkdir ~/cm11.0   【在主文件夹下创建一个名为cm11文件夹】
+
+    chmod -R 777 ~/cm11.0  【给刚创建的cm11文件夹赋予777权限】
+
+5.将我们备份好的xx.tar.gz的压缩文件复制都刚创建的cm11文件夹中。
+
+6.在cm11文件夹下打开终端输入：  
+
+    tar zxvf FileName.tar.gz     【命令格式解释：FileName是文件名称】
+
+7.稍等片刻，等到解压命令完成，我们按键盘上Ctrl+h键，就能看到解压出来的.repo文件夹，此时为了节省硬盘空间，我们把备份文件FileName.tar.gz 删除。
+
+8.在cm11下打开终端输入命令：
+
+    .repo/repo/repo sync
+
+  #同步源码到最新并解压
+
+三、编译cwm recovery
+
+
+1.更新源码后，执行下面命令，完成环境的安装
+
+source build/envsetup.sh
+
+#初始化编译环境 
+
+如果提示权限不足，则
+
+cd ..
+
+chmod -R 777 cm11.0
+
+2.下一步，make我们后面要用到的工具
+
+make otatools -j8
+
+3.执行完成后会生成out目录，在/out/host/linux-x86/bin中有后面要用到的工具。
+
+4.将/out/host/linux-x86/bin加入环境变量，变量具体位置要改成你的：
+
+gedit ~/.bashrc
+
+5.在文本最后添加：
+
+export PATH=${PATH}:~/cm11.0/out/host/linux-x86/bin
+
+6.保存退出，执行下面命令，让刚加的环境变量生效：
+
+export PATH=${PATH}:~/cm11.0/out/host/linux-x86/bin
+
+7.从官方包中，别人的ROM包也可以，拿出recovery.img。我放到了~/boot/目录
+
+8.开始建立我们mi2的device目录：
+
+./build/tools/device/mkvendor.sh xiaomi mi2 ~/boot.img
+
+命令参考：
+
+./build/tools/device/mkvendor.sh device_manufacturer_name device_name /your/path/to/the/boot.img
+
+此时在/device/xiaomi/中就会有你的机型mi2了，里面有你的配置文件：
+
+AndroidBoard.mk,AndroidProducts.mk, BoardConfig.mk, device_.mk, kernel, system.prop,recovery.fstab, and vendorsetup.sh.
+
+9.修改配置文件：
+在这里很重要的一个文件就是recovery.fstab，是你手机里各个设备分区对应的挂载点，可以理解为手机的分区表。如果这个文件有错误，那么进入recovery后，会提醒分区挂载失败。
+这个文件我们可以从官方的recovery.img提取出来，需要修改。也可以直接解包别人编译好的recovery，得到recovery.fstab
+当然，我们也可以自己动手写。目前，自己也没发现什么简洁一点的办法。我是查看刷机包中的updater-script文件中各个分区的挂载点和
+
+recovery添加个人信息：
+
+显示的标题名称和版本信息目录是：
+
+/CM11/bootable/recovery/Android.mk
+
+RECOVERY_NAME := ClockworkMod Recovery
+           
+RECOVERY_NAME := CWM-based Recovery
+
+RECOVERY_VERSION := $(RECOVERY_NAME) v6.0.5.1
+            
+微薄等地址目录是cm/bootable/recovery/recocery.c
+
+ui_print(EXPAND(RECOVERY_VERSION)"\nQQ：100493065\nrombaby");
+
+\n 的意思的换行输入 可以加微薄等地址 （备注：两地都能改。我改的是改recovery.c）
+
+10.开始编译，执行命令:
+
+source build/envsetup.sh
+
+#初始化编译环境
+
+lunch cm_mi2-eng
+
+#机型改为你自己的机型
+
+make recoveryimage -j8
+
+生成recovery.img
+
+最后成功时输出结果：
+
+输出的目录为：out/target/product/mi2/recovery.img文件，就是我们要的
+

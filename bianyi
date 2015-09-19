@@ -1,0 +1,129 @@
+tar zcvf 生成的文件名.tar.gz 目标         	压缩命令
+tar zxvf 文件名.tar.gz						解压命令
+xz -z xxx		压缩
+xz -d xxx		解压
+source build/envsetup.sh
+
+lunch cm_590-eng
+
+make recoveryimage -j1
+
+make -j1 recoveryimage RECOVERY_VARIANT=baby
+
+RECOVERY_VARIANT := philz
+
+./build/tools/device/mkvendor.sh zopo zp952 ~/5570.img
+
+echo 'export PATH=${PATH}:~/cm12.1/out/host/linux-x86/bin' >> ~/.bashrc
+
+git clone https://github.com/mitwo-dev/android_kernel_xiaomi_msm8960 -b android-5.1.1
+
+git clone https://github.com/mitwo-dev/android_device_xiaomi_msm8960-common -b android-5.1.1
+
+git clone https://github.com/mitwo-dev/proprietary_vendor_xiaomi -b android-5.1.1
+
+git clone https://github.com/cofface/android_bootable_recovery-twrp bootable/cofface -b android-5.1
+
+git clone https://github.com/changyuet/android_bootable_recovery-cwm bootable/recovery-cwm -b master
+
+git clone https://github.com/changyuet/android_bootable_recovery-philz bootable/philz -b master
+
+git clone https://github.com/syhost/TWRP_CN_TTF bootable/recovery-TWRP_CN_TTF -b android-4.4
+
+git clone https://github.com/wwbhl/recovery-wwbhl bootable/recovery-philz -b philz_cwm_cn-cm11
+
+git clone https://github.com/sndnvaps/android_bootable_recovery_twrp bootable/recovery-twrp -b android-5.1-cn-dev
+
+git clone https://github.com/baidurom/dingdong-recovery -b qcom
+
+git clone https://github.com/omnirom/android_bootable_recovery -b android-5.1
+
+git clone https://github.com/xiaolu/android_bootable_recovery bootable/recovery-xiaolu -b cm-11.0
+
+git clone https://github.com/wufuyue/cwm_mtk_recovery_cn_cm10.1 bootable/cwm -b master
+
+git clone https://github.com/xiaolu/android_bootable_recovery-twrp bootable/xiaolu -b android-5.1
+
+	#TARGET_RECOVERY_INITRC :=		   #加入init.rc路径
+	#init.rc				   #init.rc加入下面内容
+	 on init
+	export PATH /sbin
+	export LD_LIBRARY_PATH .:/sbin
+
+	#DEVICE_RESOLUTION := 540x960		   #分辨率设置
+
+	#RECOVERY_SDCARD_ON_DATA := true 	   #data/media作为内置存储
+
+	RECOVERY_GRAPHICS_USE_LINELENGTH := true   #修复slanty图形在一些设备上
+
+	BOARD_HAS_NO_REAL_SDCARD := true	   #禁用sdcard分区和可能节省一些空间
+
+	TW_NO_BATT_PERCENT := true		   #禁用的显示电池电量
+
+	TW_CUSTOM_POWER_BUTTON := 107					#自定义电源按钮
+
+	TW_NO_REBOOT_BOOTLOADER := true				#删除重新启动引导装载程序按钮重新启动菜单
+	
+	TW_NO_REBOOT_RECOVERY := true					#删除重新启动恢复按钮重新启动菜单
+
+	TW_NO_USB_STORAGE := true						#移除USB存储设备上的按钮,不支持USB存储
+
+	RECOVERY_TOUCHSCREEN_SWAP_XY := true		#互换的映射X和Y轴之间的接触
+
+	RECOVERY_TOUCHSCREEN_FLIP_Y := true			#翻转y轴触摸屏值
+
+	RECOVERY_TOUCHSCREEN_FLIP_X := true			#翻转x轴触摸屏值
+
+	TW_ALWAYS_RMRF := true			#部分删除(需要一些摩托罗拉设备)
+
+	TW_NEVER_UNMOUNT_SYSTEM := true		#永远不要卸载系统(需要一些摩托罗拉设备)
+
+	TW_INCLUDE_INJECTTWRP := true		#增加了能力注入TWRP一些三星的三星设备引导映像恢复作为第二ramdisk引导映像
+
+	TW_DEFAULT_EXTERNAL_STORAGE := true  #默认为外部存储,而不是内部双存储设备(主要弃用)
+
+	TWRP_EVENT_LOGGING := true  #允许触摸事件日志记录帮助调试触摸屏问题(不要离开这个版本——它将很快填满你的日志文件)
+
+	
+
+	
+	
+	以下是一些可以帮助你的旗帜,但并不特定于TWRP(CWM)工作:
+	这个标志有多个选项,但可用于设置不同的图形模式,可能需要一些设备上正确颜色空间问题:
+	TARGET_RECOVERY_PIXEL_FORMAT:= " BGRA_8888 "
+	TARGET_RECOVERY_PIXEL_FORMAT:= " RGBX_8888 "
+	TARGET_RECOVERY_PIXEL_FORMAT:= " RGB_565 "
+
+	BOARD_HAS_FLIPPED_SCREEN:= true		#,翻转屏幕倒过来安装倒置的屏幕
+
+	TARGET_PREBUILT_RECOVERY_KERNEL:=路径/ /内核		#——使用指定内核
+
+
+    ###解决 dpkg 被中断,您必须手工运行 sudo dpkg –configure -a解决此问题
+
+		sudo rm /var/lib/dpkg/updates/*
+		sudo apt-get update
+		sudo apt-get upgrade
+		sudo apt-get install openjdk-7-jdk
+
+		$env
+
+		$unset
+
+		unset JAVA_TOOL_OPTIONS
+
+
+在主目录下的.bashrc或.profile文件中追加上面一句。
+
+
+
+echo 'unset JAVA_TOOL_OPTIONS' >> ~/.bashrc
+echo 'unset JAVA_TOOL_OPTIONS' >> ~/.profile
+
+
+
+repo init -u https://github.com/aidasaidas75/recovery_manifest.git -b android-5.0
+
+repo init -u https://github.com/marduk191/recovery_manifest.git -b android-4.4
+	
+
