@@ -1,0 +1,203 @@
+
+Source Code: https://github.com/omnirom/android_bootable_recovery
+
+Updates
+This porting tool is build on jellybean repo so that it can support three generation of MTK SoC with non-device specific build flags to maintain compatibility. Below specific build flags are not use & it seem that the 2.8.1.0 porting tool doesn't work across MTK device. However, fyi, it works fine on mine
+
+TW_INTERNAL_STORAGE_PATH := "/data/media"
+TW_INTERNAL_STORAGE_MOUNT_POINT := "data"
+TW_EXTERNAL_STORAGE_PATH := "/sdcard"
+TW_EXTERNAL_STORAGE_MOUNT_POINT := "sdcard"
+
+TW_INTERNAL_STORAGE_PATH := "/emmc"
+TW_INTERNAL_STORAGE_MOUNT_POINT := "emmc"
+TW_EXTERNAL_STORAGE_PATH := "/sdcard"
+TW_EXTERNAL_STORAGE_MOUNT_POINT := "sdcard"
+
+SP1_NAME := "uboot"
+SP1_DISPLAY_NAME := "uboot"
+SP1_BACKUP_METHOD := image
+SP1_MOUNTABLE := 0
+SP2_NAME := "nvram"
+SP2_DISPLAY_NAME := "nvram"
+SP2_BACKUP_METHOD := image
+SP2_MOUNTABLE := 0
+SP3_NAME := "custpack"
+SP3_DISPLAY_NAME := "custpack"
+SP3_BACKUP_METHOD := image
+SP3_MOUNTABLE := 0
+
+adb shell cat /proc/dumchar_info OR adb shell cat /proc/mtd
+
+Below are typical MTK partition layout
+Code:
+
+Part_Name       Size    StartAddr       Type    MapTo
+preloader    0x0000000000040000   0x0000000000000000   2   /dev/misc-sd
+dsp_bl       0x00000000005c0000   0x0000000000040000   2   /dev/misc-sd
+mbr          0x0000000000004000   0x0000000000000000   2   /dev/block/mmcblk0
+ebr1         0x0000000000004000   0x0000000000004000   2   /dev/block/mmcblk0p1
+pmt          0x0000000000400000   0x0000000000008000   2   /dev/block/mmcblk0
+nvram        0x0000000000500000   0x0000000000408000   2   /dev/block/mmcblk0
+seccfg       0x0000000000020000   0x0000000000908000   2   /dev/block/mmcblk0
+uboot        0x0000000000060000   0x0000000000928000   2   /dev/block/mmcblk0
+bootimg      0x0000000000600000   0x0000000000988000   2   /dev/block/mmcblk0
+recovery     0x0000000000800000   0x0000000000f88000   2   /dev/block/mmcblk0
+sec_ro       0x0000000000400000   0x0000000001788000   2   /dev/block/mmcblk0p2
+misc         0x0000000000060000   0x0000000001b88000   2   /dev/block/mmcblk0
+logo         0x0000000000300000   0x0000000001be8000   2   /dev/block/mmcblk0
+expdb        0x0000000000200000   0x0000000001ee8000   2   /dev/block/mmcblk0
+android      0x0000000020100000   0x00000000020e8000   2   /dev/block/mmcblk0p3
+cache        0x0000000020100000   0x00000000221e8000   2   /dev/block/mmcblk0p4
+usrdata      0x0000000020100000   0x00000000422e8000   2   /dev/block/mmcblk0p5
+fat          0x0000000085338000   0x00000000623e8000   2   /dev/block/mmcblk0p6
+bmtpool      0x0000000001500000   0x00000000ff9f00a8   2   /dev/block/mmcblk0
+Part_Name:Partition name you should open;
+Size:size of partition
+StartAddr:Start Address of partition;
+Type:Type of partition(MTD=1,EMMC=2)
+MapTo:actual device you operate
+
+Standard TWRP recovery.fstab for MTK devices
+Code:
+
+# mount point	fstype    device    	[device2]
+
+/boot           emmc      /dev/bootimg
+/recovery       emmc      /dev/recovery
+/system         ext4      /dev/block/mmcblk0p3
+/cache          ext4      /dev/block/mmcblk0p4
+/data           ext4      /dev/block/mmcblk0p5
+/emmc           vfat      /dev/block/mmcblk0p6
+/sdcard         vfat      /dev/block/mmcblk1p1    /dev/block/mmcblk1
+/sd-ext         auto      /dev/block/mmcblk1p2
+/nvram          emmc      /dev/nvram              flags=display="Nvram";backup=1
+/uboot          emmc      /dev/uboot              flags=display="Uboot";backup=1
+
+
+Below format was discovered by bgcngm & it has saved me a few lines of codes as MTK manufacturer tends to use different partition no. from each other. Eg. Some might be using mmcblk0p6 for system & some uses mmcblk0p3 while emmc@android will work on all MTK devices.
+Code:
+
+# mount point	fstype    device    	[device2]
+
+/boot           emmc      /dev/bootimg
+/recovery       emmc      /dev/recovery           flags=display="recovery";backup=1
+/uboot          emmc      /dev/uboot              flags=display="uboot";backup=1
+/nvram          emmc      /dev/nvram              flags=display="nvram";backup=1
+/cache          ext4      /emmc@cache
+/data           ext4      /emmc@usrdata
+/system         ext4      /emmc@android
+/emmc           vfat      /emmc@fat
+/sdcard         vfat      /dev/block/mmcblk1p1    /dev/block/mmcblk1
+/sd-ext         auto      /dev/block/mmcblk1p2
+
+Having said that, few has reported back that its not compatible for their MTK then you'll need to unpack it & use the device block path /dev/block/mmcblk0pX instead of this soft-link emmc@android format. Use Notepad++ for editing. Updates : Porting tool now uses direct device block path.
+
+Below examples are some of MrJavum TWRP recovery.fstab for MTKs
+Code:
+
+# mount point	fstype		device			[device2]
+
+/boot           emmc            /dev/bootimg
+/cache          ext4            /emmc@cache
+/data           ext4            /emmc@usrdata
+/misc           emmc            /dev/misc
+/recovery       emmc            /dev/recovery
+/system         ext4            /emmc@android
+/preload        ext4            /emmc@preload           flags=display="Preload";backup=1;wipeingui
+/external_sd    vfat            /dev/block/mmcblk1p1    flags=display="External SD-card";storage;wipeingui;removable
+/nvram          emmc            /dev/nvram              flags=display="Nvram";backup=1
+/uboot          emmc            /dev/uboot              flags=display="Uboot";backup=1
+/logo           emmc            /dev/logo               flags=display="Boot Logo";backup=1
+
+#mt6582/recovery_emmc.fstab
+
+To support preload partition you'll need to specify it at init.rc too.
+Code:
+
+    mkdir /preload
+    mkdir /external_sd
+    mkdir /system
+    mkdir /data
+    mkdir /cache
+    mount /tmp /tmp tmpfs
+
+Code:
+
+/boot		emmc		/dev/bootimg
+/cache		ext4		/emmc@cache
+/data		ext4		/emmc@usrdata
+/misc		emmc		/dev/misc
+/recovery	emmc		/dev/recovery
+/emmc		vfat		/emmc@fat		flags=display="Internal SD-card";storage;wipeingui;backup=1
+/system		ext4		/emmc@android
+/sdcard		vfat		/dev/block/mmcblk1p1	/dev/block/mmcblk1	flags=display="External SD-card";storage;wipeingui;removable
+/nvram		emmc		/dev/nvram		flags=display="Nvram";backup=1
+/uboot		emmc		/dev/uboot		flags=display="Uboot";backup=1
+/logo		emmc		/dev/logo		flags=display="Boot Logo";backup=1
+
+Awaaas is so kind to shared with me his findings. He got help from bigbiff on the IRC & now TWRP can also backup EBR1 & SECRO. Refer to updates here.
+
+CodeLover has added cust partition for his Huawei.
+Code:
+
+# mount point	fstype		device			[device2]
+
+/boot        emmc    /dev/bootimg            flags=display="boot"
+/misc        emmc    /dev/misc
+/recovery    emmc    /dev/recovery           flags=display="recovery";backup=1
+/uboot       emmc    /dev/uboot              flags=display="uboot";backup=1
+/nvram       emmc    /dev/nvram              flags=display="nvram";backup=1
+/cache       ext4    /emmc@cache             flags=display="cache"
+/data        ext4    /emmc@usrdata           flags=display="data"
+/cust        ext4    /emmc@cust              flags=display="cust";backup=1
+/system      ext4    /emmc@android           flags=display="system"
+/sdcard      vfat    /dev/block/mmcblk1p1    /dev/block/mmcblk1
+
+init.rc with cust partition support.
+Code:
+
+	mkdir /boot
+	mkdir /recovery
+	mkdir /system
+	mkdir /data
+	mkdir /cust
+	mkdir /cache
+	mkdir /sdcard
+	mount tmpfs tmpfs /tmp
+
+So its entirely up to you to specify what you want TWRP to backup on your MTK no need to compile a new one, just mod the recovery.fstab
+
+For further info refer to the main thread here . . .
+
+For MTK Alcatel devices, besides /custpack there is also /mobile_info partition, again its entirely up to you whether you would wanna backup it too, credits to MrJavum for compiling the first TWRP version for it . . .
+Code:
+
+# mount point	fstype		device			[device2]
+
+/boot		emmc	/dev/bootimg
+/recovery	emmc	/dev/recovery
+/cache		ext4	/emmc@cache
+/data		ext4	/emmc@usrdata
+/system		ext4	/emmc@android
+/emmc		vfat		/emmc@fat
+/custpack	ext4	/emmc@custpack		flags=display=custpack;backup=1
+/mobile_info	ext4	/emmc@mobile_info	flags=display=mobile_info;backup=1
+/nvram		emmc	/dev/nvram		flags=display=Nvram;backup=1
+/uboot		emmc	/dev/uboot		flags=display=Uboot;backup=1
+/sdcard		vfat	/dev/block/mmcblk1p1	/dev/block/mmcblk1
+/sd-ext		auto	/dev/block/mmcblk1p2
+
+Code:
+
+	mkdir /boot
+	mkdir /recovery
+	mkdir /system
+	mkdir /data
+	mkdir /cache
+	mkdir /custpack
+	mkdir /mobile_info
+	mkdir /sdcard
+	mount tmpfs tmpfs /tmp
+
+

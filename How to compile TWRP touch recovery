@@ -1,0 +1,154 @@
+*BEFORE YOU COMPILE*
+Note: If you add or change any flags, you will need to make clean or make clobber before recompiling or your flag changes will not be picked up.
+
+TARGET_RECOVERY_INITRC :=
+
+If your device has this line, it will have a path to a custom, prebuilt init.rc that is used in recovery. Most likely you will need to change the custom init.rc slightly. Find the recovery's init.rc file and open it. Near the top you will see something like this:
+Code:
+
+on init
+	export PATH /sbin
+	export LD_LIBRARY_PATH .:/sbin
+
+DEVICE_RESOLUTION := 540x960
+Note that themes do not rotate, so the 1280x800 theme is intended for tablets and would not work on the Samsung Galaxy Note 1 that expects a 800x1280 type of theme.
+
+In addition to the resolution, we have the following build flags:
+
+RECOVERY_SDCARD_ON_DATA := true 
+-- this enables proper handling of /data/media on devices that have this folder for storage (most Honeycomb and devices that originally shipped with ICS like Galaxy Nexus)
+
+RECOVERY_GRAPHICS_USE_LINELENGTH := true 
+-- fixes slanty looking graphics on some devices
+
+BOARD_HAS_NO_REAL_SDCARD := true 
+-- disables things like sdcard partitioning and may save you some space if TWRP isn't fitting in your recovery patition
+
+TW_INCLUDE_DUMLOCK := true 
+-- includes HTC Dumlock for devices that need it
+
+TW_NO_BATT_PERCENT := true 
+-- disables the display of the battery percentage for devices that don't support it properly
+
+TW_CUSTOM_POWER_BUTTON := 107 
+-- custom maps the power button for the lockscreen
+
+TW_NO_REBOOT_BOOTLOADER := true 
+-- removes the reboot bootloader button from the reboot menu
+
+TW_NO_REBOOT_RECOVERY := true 
+-- removes the reboot recovery button from the reboot menu
+
+TW_NO_USB_STORAGE := true 
+-- removes the USB storage button on devices that don't support USB storage
+
+RECOVERY_TOUCHSCREEN_SWAP_XY := true 
+-- swaps the mapping of touches between the X and Y axis
+
+RECOVERY_TOUCHSCREEN_FLIP_Y := true 
+-- flips y axis touchscreen values
+
+RECOVERY_TOUCHSCREEN_FLIP_X := true 
+-- flips x axis touchscreen values
+
+TW_ALWAYS_RMRF := true 
+-- forces the rm -rf option to always be on (needed for some Motorola devices)
+
+TW_NEVER_UNMOUNT_SYSTEM := true 
+-- never unmount system (needed for some Motorola devices)
+
+TW_INCLUDE_INJECTTWRP := true 
+-- adds ability to inject TWRP into some Samsung boot images for Samsung devices that have recovery as a second ramdisk in the boot image
+
+TW_DEFAULT_EXTERNAL_STORAGE := true 
+-- defaults to external storage instead of internal on dual storage devices (largely deprecated)
+
+TWRP_EVENT_LOGGING := true 
+-- enables touch event logging to help debug touchscreen issues (don't leave this on for a release - it will fill up your logfile very quickly)
+
+Here's some flags that may help you, but are not specific to TWRP (works in CWM too):
+This flag has multiple options, but can be used to set different graphics modes that may be need to correct color space issues on some devices:
+TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
+TARGET_RECOVERY_PIXEL_FORMAT := "RGBX_8888"
+TARGET_RECOVERY_PIXEL_FORMAT := "RGB_565"
+
+BOARD_HAS_FLIPPED_SCREEN := true 
+-- flips the screen upside down for screens that were mounted upside-down
+
+TARGET_PREBUILT_RECOVERY_KERNEL := path/to/kernel 
+-- use to specify a kernel specifically for building recovery
+
+*RECOVERY.FSTAB*
+
+Code:
+
+PRODUCT_COPY_FILES += device/lge/hammerhead/twrp.fstab:recovery/root/etc/twrp.fstab
+
+The fstab in TWRP can contain some "flags" for each partition listed in the fstab.
+
+Here's a sample TWRP fstab for the Galaxy S4 that we will use for reference:
+Code:
+
+/boot       emmc        /dev/block/platform/msm_sdcc.1/by-name/boot
+/system     ext4        /dev/block/platform/msm_sdcc.1/by-name/system
+/data       ext4        /dev/block/platform/msm_sdcc.1/by-name/userdata length=-16384
+/cache      ext4        /dev/block/platform/msm_sdcc.1/by-name/cache
+/recovery   emmc        /dev/block/platform/msm_sdcc.1/by-name/recovery
+/efs        ext4        /dev/block/platform/msm_sdcc.1/by-name/efs                            flags=display="EFS";backup=1
+/external_sd     vfat       /dev/block/mmcblk1p1    /dev/block/mmcblk1   flags=display="Micro SDcard";storage;wipeingui;removable
+/usb-otg         vfat       /dev/block/sda1         /dev/block/sda       flags=display="USB-OTG";storage;wipeingui;removable
+/preload    ext4        /dev/block/platform/msm_sdcc.1/by-name/hidden                            flags=display="Preload";wipeingui;backup=1
+/modem      ext4        /dev/block/platform/msm_sdcc.1/by-name/apnhlos
+/mdm		emmc		/dev/block/platform/msm_sdcc.1/by-name/mdm
+
+Flags are added to the end of the partition listing in the fstab separated by white space (spaces or tabs are fine). The flags affect only that partition but not any of the others. Flags are separated by semicolons. If your display name is going to have a space, you must surround the display name with quotes.
+Code:
+
+/external_sd  vfat  /dev/block/mmcblk1p1  flags=display="Micro SDcard";storage;wipeingui;removable
+
+The flags for this partition give it a display name of "Micro SDcard" which is displayed to the user. wipeingui makes this partition available for wiping in the advanced wipe menu. The removable flag indicates that sometimes this partition may not be present preventing mounting errors from being displayed during startup. Here is a full list of flags:
+removable -- indicates that the partition may not be present preventing mounting errors from being displayed during boot
+storage -- indicates that the partition can be used as storage which makes the partition available as storage for backup, restore, zip installs, etc.
+settingsstorage -- only one partition should be set as settings storage, this partition is used as the location for storing TWRP's settings file
+canbewiped -- indicates that the partition can be wiped by the back-end system, but may not be listed in the GUI for wiping by the user
+userrmrf -- overrides the normal format type of wiping and only allows the partition to be wiped using the rm -rf command
+backup= -- must be succeeded by the equals sign, so backup=1 or backup=0, 1 indicates that the partition can be listed in the backup/restore list while 0 ensures that this partition will not show up in the backup list.
+wipeingui -- makes the partition show up in the GUI to allow the user to select it for wiping in the advanced wipe menu
+wipeduringfactoryreset -- the partition will be wiped during a factory reset
+ignoreblkid -- blkid is used to determine what file system is in use by TWRP, this flag will cause TWRP to skip/ignore the results of blkid and use the file system specified in the fstab only
+retainlayoutversion -- causes TWRP to retain the .layoutversion file in /data on devices like Sony Xperia S which sort of uses /data/media but still has a separate /sdcard partition
+symlink= -- causes TWRP to run an additional mount command when mounting the partition, generally used with /data/media to create /sdcard
+display= -- sets a display name for the partition for listing in the GUI
+storagename= -- sets a storage name for the partition for listing in the GUI storage list
+backupname= -- sets a backup name for the partition for listing in the GUI backup/restore list
+length= -- usually used to reserve empty space at the end of the /data partition for storing the decryption key when Android's full device encryption is present, not setting this may lead to the inability to encrypt the device
+canencryptbackup= -- 1 or 0 to enable/disable, makes TWRP encrypt the backup of this partition if the user chooses encryption (only applies to tar backups, not images)
+userdataencryptbackup= -- 1 or 0 to enable/disable, makes TWRP encrypt only the userdata portion of this partition, certain subfuldes like /data/app would not be encrypted to save time
+subpartitionof= -- must be succeeded by the equals sign and the path of the partition it is a subpartition of. A subpartition is treated as "part" of the main partition so for instance, TWRP automatically makes /datadata a subpartition of /data. This means that /datadata will not show up in the GUI listings, but /datadata would be wiped, backed up, restored, mounted, and unmounted anytime those operations are performed on /data. A good example of the use of subpartitions is the 3x efs partitions on the LG Optimus G:
+Code:
+
+/efs1         emmc   /dev/block/mmcblk0p12 flags=backup=1;display=EFS
+/efs2         emmc   /dev/block/mmcblk0p13 flags=backup=1;subpartitionof=/efs1
+/efs3         emmc   /dev/block/mmcblk0p14 flags=backup=1;subpartitionof=/efs1
+
+This lumps all 3 partitions into a single "EFS" entry in the TWRP GUI allowing all three to be backed up and restored together under a single entry.
+
+If you have questions, feel free to stop by #twrp on Freenode. If you post here I may not see it for a while as I have lots of threads out there and there's no way for me to keep track of them all. If you successfully port TWRP to a new device, please let us know! We love to hear success stories!
+
+If you have code changes that you'd like to submit, please submit them through the Omni Gerrit server. Guide is here.
+
+Once you get Omni or CM sync'ed and your TWRP flags set, you should do a source ./build/envsetup.sh We usually lunch for the device in question, so something like "lunch omni_hammerhead-eng".
+
+After you lunch successfully for your device this is the command used for most devices:
+Code:
+
+make clean && make -j# recoveryimage
+
+Replace the # with the core count +1, so if you have a dual core it's -j3 and a quad core becomes -j5, etc. If you're dealing with a "typical" Samsung device, then you'll need to
+Code:
+
+make -j# bootimage
+
+Most Samsung devices have the recovery included as an extra ramdisk in the boot image instead of a separate recovery partition as found on most other devices.
+
+
